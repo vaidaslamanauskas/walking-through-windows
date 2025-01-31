@@ -1,0 +1,317 @@
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+  <title>walking through windows</title>
+  
+  <style>
+    @font-face {
+      font-family: "You will never find out what font this is";
+      src: url("/an-font.woff2") format("woff2");
+      font-display: swap;
+    }
+    
+    *,
+    *::after,
+    *::before {
+      margin: 0;
+      padding: 0;
+      font-size: inherit;
+      box-sizing: border-box;
+    }
+    
+    body {
+      background-color: rgb(0 0 0);
+      font-family: "You will never find out what font this is";
+    }
+    
+    #window {
+      background: rgb(0 0 0);
+      border: .5px solid rgb(75 75 75);
+      
+      position: fixed;
+      top: 5vw;
+      right: 5vw;
+      left: 5vw;
+      
+      height: 50vmin;
+      
+      overflow: hidden;
+      opacity: 0;
+      transition: opacity 5s;
+    }
+    
+    body.ready-to-walk #window {
+      opacity: 1;
+    }
+
+    #shade {
+      background: rgb(0 0 0);
+      box-shadow: 0 .5px 0 rgb(75 75 75);
+      
+      position: absolute;
+      left: 0;
+      top: 0%;
+      width: 100%;
+      height: 100%;
+      cursor: grab;
+      z-index: 1;
+    }
+
+    #handle {
+      background: rgb(75 75 75);
+      position: absolute;
+      bottom: 15px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 40px;
+      height: .5px;
+    }
+    
+    .drop {
+      color: rgb(255 255 255);
+      
+      font-size: 13px;
+      
+      pointer-events: none;
+      position: absolute;
+      animation: rain var(--random-s) linear infinite;
+      left: calc(100vw * var(--random-x));
+      top: calc(50vh * var(--random-y));
+      
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    @keyframes rain {
+      0% {
+        transform: translateY(-50vh);
+      }
+
+      100% {
+        transform: translateY(50vh);
+      }
+    }
+    
+    #message {
+      color: rgb(255 255 255);
+      
+      font-size: 11px;
+      line-height: 14.3px;
+      letter-spacing: .4px;
+      text-transform: uppercase;
+      text-align: center;
+      
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      
+      display: block;
+      
+      position: fixed;
+      left: 50%;
+      bottom: 5vh;
+      
+      transform: translateX(-50%);
+      filter: brightness(0%);
+    }
+
+    #message > time {
+      opacity: 0.6;
+    }
+  </style>
+</head>
+<body>
+  
+  <div id="window">
+    <div id="shade">
+      <div id="handle"></div>
+    </div>
+  </div>
+  
+  <p id="message">
+    walking through windows
+    <br>
+    <br>
+    <time>hello</time>
+  </p>
+
+  <script>
+    document.addEventListener("DOMContentLoaded", function () {
+      rain();
+      
+      setTimeout(function() {
+        document.body.classList.add("ready-to-walk");
+      }, 1000);
+    });
+    
+    dragElement(document.getElementById("shade"));
+
+    function dragElement(element) {
+      var y_1 = 0,
+          y_2 = 0;
+
+      element.addEventListener("touchstart", dragMouseDown);
+      element.addEventListener("mousedown", dragMouseDown);
+
+      function dragMouseDown(e) {
+        e = e || window.event;
+        e.preventDefault();
+
+        // get event's y coordinate
+        y_2 = e.type === 'touchmove' ? e.touches[0].clientY : e.clientY;
+
+        document.addEventListener("touchend", closeDragElement);
+        document.addEventListener("mouseup", closeDragElement);
+
+        document.addEventListener("touchmove", elementDrag);
+        document.addEventListener("mousemove", elementDrag);
+      }
+
+      function elementDrag(e) {
+        e = e || window.event;
+        e.preventDefault();
+
+        // get event's y coordinate
+        var clientY = e.type === "touchmove" ? e.touches[0].clientY : e.clientY;
+
+        // calculate the new cursor position and update
+        y_1 = y_2 - clientY;
+        y_2 = clientY;
+
+        // set the element's new position. max: 0%, min: -85%
+        element.style.top =
+          Math.max(
+            -85,
+            Math.min(0, ((element.offsetTop - y_1) / element.offsetHeight) * 100)
+          ) + "%";
+        
+        // set light, Math ABS ...
+        document.getElementById("message").style.filter = "brightness(" 
+          + 
+          Math.abs(Math.max(
+            -85,
+            Math.min(0, ((element.offsetTop - y_1) / element.offsetHeight) * 100)
+          ))
+          + "%)";
+        
+        // check if we're ready for audio
+        checkAudio();
+        
+      }
+
+      // stop moving when mouse button is released
+      function closeDragElement() {
+        document.removeEventListener("touchend", closeDragElement);
+        document.removeEventListener("mouseup", closeDragElement);
+        document.removeEventListener("touchmove", elementDrag);
+        document.removeEventListener("mousemove", elementDrag);
+      }
+    }
+    
+    function rain() {
+      const numDrops = 50;
+      const separationDistance = 20;
+      const drops = [];
+
+      for (let i = 0; i < numDrops; i++) {
+        const drop = document.createElement("div");
+        drop.classList.add("drop");
+        drop.textContent = randomSymbol();
+
+        let attempts = 0,
+          x,
+          y;
+        do {
+          x = Math.random();
+          y = Math.random();
+          attempts++;
+        } while (tooClose(x, y) && attempts < 100);
+
+        drop.style.setProperty("--random-x", x);
+        drop.style.setProperty("--random-y", y);
+        drop.style.setProperty("--random-s", (Math.random() * (1 - 0.3) + 0.3).toFixed(1) + "s"); // speed
+        drops.push({ x, y });
+        document.getElementById("window").appendChild(drop);
+      }
+
+      function tooClose(x, y) {
+        return drops.some((droplet) => {
+          const dx = (x - droplet.x) * document.getElementById("window").innerWidth;
+          const dy = (y - droplet.y) * document.getElementById("window").innerHeight;
+          return dx * dx + dy * dy < separationDistance * separationDistance;
+        });
+      }
+
+      function randomSymbol() {
+        const symbols = [".", "|"];
+        return symbols[Math.floor(Math.random() * symbols.length)];
+      }
+    }
+    
+    // ...
+    const audio = new Audio("rain.mp3");    
+    audio.loop = true; // keep playing when below -5%
+    audio.volume = 0; // start muted
+
+    let playing = false;
+    let fadeInterval = null;
+
+    function fadeAudio(targetVolume) {
+      
+      // stop any previous fade
+      clearInterval(fadeInterval);
+      
+      fadeInterval = setInterval(() => {
+        
+        let step = 0.1;
+        
+        if (audio.volume < targetVolume) {
+          audio.volume = Math.min(audio.volume + step, targetVolume);
+        } else {
+          audio.volume = Math.max(audio.volume - step, targetVolume);
+        }
+
+        if (audio.volume === targetVolume) {
+          
+          clearInterval(fadeInterval);
+          
+          if (targetVolume === 0) {
+            
+            // stop audio when fully faded out
+            audio.pause();
+          }
+        }
+      }, 100);
+    }
+
+    function checkAudio() {
+      const element = document.getElementById("shade");
+      const value = parseFloat(element.style.top);
+
+      if (value < -5) {
+        if (!playing) {
+          audio.play();
+          playing = true;
+        }
+        
+        fadeAudio(1);
+      } else {
+        fadeAudio(0);
+        playing = false;
+      }
+    }
+
+    document.querySelector("time").innerText = getCurrentDate();
+
+    function getCurrentDate() {
+      const today = new Date();
+      const day = String(today.getDate()).padStart(2, "0");
+      const month = String(today.getMonth() + 1).padStart(2, "0");
+      const year = today.getFullYear();
+
+      return `${day}/${month}/${year}`;
+    }
+
+  </script>
+</body>
+</html>
